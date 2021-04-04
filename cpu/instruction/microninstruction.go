@@ -1,6 +1,7 @@
 package instruction
 
 import (
+	"fmt"
 	. "nes6502/bus"
 	. "nes6502/cpu/alu"
 	. "nes6502/cpu/register"
@@ -18,6 +19,30 @@ type MicroInstruction struct {
 
 func jump(pc uint16, offset byte) uint16 {
 	return uint16(int16(pc) + int16(offset))
+}
+func pushPC(register *Register, bus *Bus) {
+	fmt.Printf("PUSH PC %04X\n", register.PC)
+	push(register, bus, byte(register.PC>>8))
+	push(register, bus, byte(register.PC))
+}
+
+func pullPC(register *Register, bus *Bus) uint16 {
+
+	bs1 := pull(register, bus)
+	bs0 := pull(register, bus)
+	register.PC = uint16(bs0)<<8 + uint16(bs1)
+	fmt.Printf("PC %04X\n", register.PC)
+	return register.PC
+}
+
+func push(register *Register, bus *Bus, data byte) {
+	bus.WriteByte(uint16(register.SP)+0x0100, []byte{data})
+	register.SP++
+}
+func pull(register *Register, bus *Bus) byte {
+	register.SP--
+	top := (<-bus.ReadByte(uint16(register.SP) + 0x0100))[0]
+	return top
 }
 
 var (
@@ -72,7 +97,11 @@ var (
 	BIT = MicroInstruction{
 		"BIT",
 		"Test Bits in Memory with Accumulator",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.SetStatus(SR_FLAG_Overflow, operand[0]>>6&0x1 == 1)
+			register.SetStatus(SR_FLAG_Negative, operand[0]>>7&0x1 == 1)
+			register.SetStatus(SR_FLAG_Zero, register.AC&operand[0] == 0)
+		},
 	}
 	BMI = MicroInstruction{
 		"BMI",
@@ -105,10 +134,19 @@ var (
 		"BRK",
 		"Force Break",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.SetStatus(SR_FLAG_Interrupt, true)
-			//Stack<=PC
-			vector := <-bus.ReadWord(0xFFFE)
-			register.PC = uint16(vector[0]<<8 + vector[1])
+
+			if !register.GetStatus(SR_FLAG_Interrupt) {
+				//push PC+2, push SR
+
+				push(register, bus, register.SR)
+				pushPC(register, bus)
+
+				vector := <-bus.ReadWord(0xFFFE)
+				register.PC = uint16(vector[0])<<8 + uint16(vector[1])
+
+				register.SetStatus(SR_FLAG_Interrupt, true)
+			}
+
 		},
 	}
 	BVC = MicroInstruction{
@@ -160,33 +198,44 @@ var (
 	CMP = MicroInstruction{
 		"CMP",
 		"Compare Memory with Accumulator",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			alu.Sub(resolved[0], register.AC)
+		},
 	}
 	CPX = MicroInstruction{
 		"CPX",
 		"Compare Memory and Index X",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			alu.Sub(resolved[0], register.X)
+		},
 	}
 	CPY = MicroInstruction{
 		"CPY",
 		"Compare Memory and Index Y",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			alu.Sub(resolved[0], register.Y)
+		},
 	}
 	DEC = MicroInstruction{
 		"DEC",
 		"Decrement Memory by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			bus.WriteByte(address, []byte{(<-bus.ReadByte(address))[0] - 1})
 		},
 	}
 	DEX = MicroInstruction{
 		"DEX",
 		"Decrement Index X by One",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.X--
+		},
 	}
 	DEY = MicroInstruction{
 		"DEY",
 		"Decrement Index Y by One",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.Y--
+		},
 	}
 	EOR = MicroInstruction{
 		"EOR",
@@ -202,14 +251,14 @@ var (
 		"INX",
 		"Increment Index X by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.X += 1
+			register.X++
 		},
 	}
 	INY = MicroInstruction{
 		"INY",
 		"Increment Index Y by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.Y += 1
+			register.Y++
 		},
 	}
 	JMP = MicroInstruction{
@@ -223,24 +272,30 @@ var (
 		"JSR",
 		"Jump to New Location Saving Return Address",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			//stack<=pc
+			pushPC(register, bus)
 			register.PC = address
 		},
 	}
 	LDA = MicroInstruction{
 		"LDA",
 		"Load Accumulator with Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.AC = resolved[0]
+		},
 	}
 	LDX = MicroInstruction{
 		"LDX",
 		"Load Index X with Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.X = resolved[0]
+		},
 	}
 	LDY = MicroInstruction{
 		"LDY",
 		"Load Index Y with Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.Y = resolved[0]
+		},
 	}
 	LSR = MicroInstruction{
 		"LSR",
@@ -264,26 +319,29 @@ var (
 		"PHA",
 		"Push Accumulator on Stack",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			bus.WriteByte(uint16(register.SP)+0x1000, make([]byte, register.AC))
+			push(register, bus, register.AC)
 		},
 	}
 	PHP = MicroInstruction{
 		"PHP",
 		"Push Processor Status on Stack",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.SP++
-			bus.WriteByte(uint16(register.SP)+0x1000, make([]byte, register.SR))
+			push(register, bus, register.SR)
 		},
 	}
 	PLA = MicroInstruction{
 		"PLA",
 		"Pull Accumulator from Stack",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.AC = pull(register, bus)
+		},
 	}
 	PLP = MicroInstruction{
 		"PLP",
 		"Pull Processor Status from Stack",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.SR = pull(register, bus)
+		},
 	}
 	ROL = MicroInstruction{
 		"ROL",
@@ -299,14 +357,18 @@ var (
 		"RTI",
 		"Return from Interrupt",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			bs := <-bus.ReadWord(0x1000 + uint16(register.SP))
-			register.PC = uint16(bs[0]<<8 + bs[1])
+			register.SP = pull(register, bus)
+			pullPC(register, bus)
+
 		},
 	}
 	RTS = MicroInstruction{
 		"RTS",
 		"Return from Subroutine",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			//Pull PC
+			pullPC(register, bus)
+		},
 	}
 	SBC = MicroInstruction{
 		"SBC",
@@ -337,7 +399,9 @@ var (
 	STA = MicroInstruction{
 		"STA",
 		"Store Accumulator in Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			bus.WriteByte(address, []byte{register.AC})
+		},
 	}
 	STX = MicroInstruction{
 		"STX",
@@ -347,7 +411,9 @@ var (
 	STY = MicroInstruction{
 		"STY",
 		"Sore Index Y in Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			bus.WriteByte(address, []byte{register.Y})
+		},
 	}
 	TAX = MicroInstruction{
 		"TAX",

@@ -16,6 +16,10 @@ type RamMapper struct {
 	Dma         *DMA
 }
 
+func addressInRange(address uint16, lo uint16, hi uint16) bool {
+	return (address >= lo) && (address < hi)
+}
+
 /**
 +---------+-------+-------+-----------------------+
     | 地址    | 大小  | 标记  |         描述          |
@@ -38,21 +42,21 @@ func (ramMapper *RamMapper) Read(address uint16, bytes int) []byte {
 		return ramMapper.Ram.ReadBytes(address%0x0800, bytes)
 	}
 	//$2000-$2007	$0008	NES PPU registers
-	if address >= 0x2000 && address < 0x4000 {
+	if addressInRange(address, 0x2000, 0x4000) {
 		return ramMapper.PpuRegister.ReadBytes(address%8, bytes)
 	}
 	//IO register
-	if address >= 0x4000 && address < 0x4020 {
+	if addressInRange(address, 0x4000, 0x4020) {
 		return ramMapper.IoRegister.ReadBytes(address-0x4000, bytes)
 	}
 	//Expansion ROM
-	if address >= 0x4020 && address < 0x6000 {
+	if addressInRange(address, 0x4020, 0x6000) {
 
 	}
-	if address >= 0x6000 && address < 0x8000 {
+	if addressInRange(address, 0x6000, 0x8000) {
 
 	}
-	if address >= 0x8000 && address < 0xFFFF {
+	if addressInRange(address, 0x8000, 0xFFFF) {
 		return ramMapper.Rom.Program.ReadBytes(address%(0x4000*uint16(ramMapper.Rom.Header.PGMMirrors)), bytes)
 
 	}
@@ -66,7 +70,7 @@ func (ramMapper *RamMapper) Write(address uint16, data []byte) {
 		ramMapper.Ram.WriteBytes(address%0x0800+0x1000, data)
 		ramMapper.Ram.WriteBytes(address%0x0800+0x1800, data)
 	}
-	if address >= 0x2000 && address < 0x3FFF {
+	if addressInRange(address, 0x2000, 0x4000) {
 		ramMapper.PpuRegister.WriteBytes(address%8, data[0])
 
 		/**
@@ -78,7 +82,7 @@ func (ramMapper *RamMapper) Write(address uint16, data []byte) {
 	}
 
 	//IO register
-	if address >= 0x4000 && address < 0x4020 {
+	if addressInRange(address, 0x4000, 0x4020) {
 
 		ramMapper.IoRegister.WriteBytes(address-0x4000, data[0])
 
@@ -89,20 +93,20 @@ func (ramMapper *RamMapper) Write(address uint16, data []byte) {
 	}
 
 	//Expansion ROM         |
-	if address >= 0x4020 && address < 0x6000 {
+	if addressInRange(address, 0x4020, 0x6000) {
 
 	}
 
 	//SRAM
-	if address >= 0x6000 && address < 0x8000 {
+	if addressInRange(address, 0x6000, 0x8000) {
 
 	}
 
 	//PRG-ROM
-	if address >= 0x8000 && address < 0xC000 {
+	if addressInRange(address, 0x8000, 0xC000) {
 
 	}
-	if address >= 0xC000 && address < 0xF000 {
+	if addressInRange(address, 0xC000, 0xF000) {
 
 	}
 }

@@ -9,6 +9,8 @@ const (
 	HORIZONTAL_MIRROR = false
 )
 
+var MAGIC = string([]byte{0x4E, 0x45, 0x53, 0x1A})
+
 type Trainer struct {
 	data []byte
 }
@@ -18,7 +20,12 @@ type Program struct {
 }
 
 func (prg *Program) ReadBytes(address uint16, bytes int) []byte {
-	return prg.data[address : address+uint16(bytes)]
+	if bytes == 1 {
+		return []byte{prg.data[address]}
+	} else {
+		//$LLHH
+		return []byte{prg.data[address+1], prg.data[address]}
+	}
 }
 
 type Character struct {

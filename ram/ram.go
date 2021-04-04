@@ -6,18 +6,20 @@ import (
 
 type Ram struct {
 	data [0xffff]byte
-	zeroPage [0x00ff - 0x0000]byte
-	stack    [0x01ff - 0x0100]byte
 }
 
 func (ram *Ram) Dump(data []byte) {
-	for i,b := range data{
+	for i, b := range data {
 		ram.data[i] = b
 	}
 }
 
-func (ram *Ram) Stack(address uint16, data byte) {
-	ram.stack[address] = data
+func (ram *Ram) ZeroPage(address uint16) byte {
+	return ram.data[0x00FF&address]
+}
+
+func (ram *Ram) Stack(address uint16) byte {
+	return ram.data[0x01FF+address]
 }
 
 func (ram *Ram) WriteByte(address uint16, data byte) {

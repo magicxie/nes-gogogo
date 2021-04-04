@@ -1,9 +1,14 @@
 package rom
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Resolver struct {
 }
+
+var INVALID_NES_FORMAT_ERROR = errors.New("invalid nes header")
 
 func (resolver *Resolver) Resolve(romRawData []byte) (rom *Rom) {
 
@@ -12,7 +17,7 @@ func (resolver *Resolver) Resolve(romRawData []byte) (rom *Rom) {
 	romSize := len(romRawData)
 	fmt.Printf("ROM size %fK\n", float32(romSize)/1024)
 
-	rom.Header = resolver.resolveHeader(romRawData[0:16])
+	_, rom.Header = resolver.resolveHeader(romRawData[0:16])
 	rom.Trainer = &Trainer{}
 
 	trainerSize := 512
@@ -42,12 +47,18 @@ func (resolver *Resolver) Resolve(romRawData []byte) (rom *Rom) {
 	return rom
 }
 
-func (resolver *Resolver) resolveHeader(headerData []byte) (header *Header) {
+func (resolver *Resolver) resolveHeader(headerData []byte) (err error, header *Header) {
 	header = &Header{}
 
 	nes := string(headerData[0:4])
 	println("FILE HEAD", nes)
 
+	if nes != MAGIC {
+		err = INVALID_NES_FORMAT_ERROR
+		return err, nil
+	}
+
+	header.Magic = nes
 	header.PGMMirrors = headerData[4]
 	header.CHRMirrors = headerData[5]
 
@@ -85,5 +96,5 @@ func (resolver *Resolver) resolveHeader(headerData []byte) (header *Header) {
 
 	header.RamPGM = tvMode1Flags<<4>>6 == 0
 
-	return header
+	return nil, header
 }

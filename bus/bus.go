@@ -12,9 +12,9 @@ type Payload struct {
 }
 
 type Bus struct {
-	payload     chan Payload
-	dataBus     chan []byte
-	mapper Mapper
+	payload chan Payload
+	dataBus chan []byte
+	mapper  Mapper
 	//Ram         *Ram
 	//IORegisters *IORegisters
 }
@@ -29,7 +29,7 @@ func (bus *Bus) address(bytes int) {
 	payload := <-bus.payload
 
 	if payload.signal == READ {
-		bus.dataBus <- bus.mapper.Read(payload.address, bytes)//bus.Ram.ReadBytes(payload.address, bytes)
+		bus.dataBus <- bus.mapper.Read(payload.address, bytes) //bus.Ram.ReadBytes(payload.address, bytes)
 	}
 
 	if payload.signal == WRITE {
@@ -61,6 +61,11 @@ func (bus *Bus) Write(address uint16, data []byte) {
 func (bus *Bus) WriteByte(address uint16, data []byte) {
 	bus.dataBus <- data[0:1]
 	bus.Send(WRITE, address, 1)
+}
+
+func (bus *Bus) WriteUint16(address uint16, data uint16) {
+	bus.dataBus <- []byte{byte(data >> 8), byte(data)}
+	bus.Send(WRITE, address, 2)
 }
 
 func (bus *Bus) WriteWord(address uint16, data []byte) {

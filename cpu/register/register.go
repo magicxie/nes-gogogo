@@ -15,7 +15,7 @@ const (
 
 type Register struct {
 	//Registers:
-	PC uint16
+	PC uint16 //BigEndian
 	AC uint8
 	X  uint8
 	Y  uint8

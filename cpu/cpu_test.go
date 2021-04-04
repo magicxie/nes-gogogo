@@ -4,13 +4,12 @@ import (
 	"io/ioutil"
 	. "nes6502/bus"
 	. "nes6502/clock"
-	"nes6502/io"
+	. "nes6502/io"
 	. "nes6502/ppu"
 	. "nes6502/ram"
 	. "nes6502/rom"
 	"testing"
 )
-
 
 func TestPowerOn(t *testing.T) {
 
@@ -25,13 +24,12 @@ func TestPowerOn(t *testing.T) {
 
 	go u.AcceptClockPulse(cpuCycle)
 
-
 	//fs,_ := ioutil.ReadFile("../rom/bin/start")
 	//println(err.Error())
 
 	r := &Resolver{}
-	romfile,_ := ioutil.ReadFile("../rom/1.Branch_Basics.nes")
-	rom := r.Resolve(romfile)//&Rom{}
+	romfile, _ := ioutil.ReadFile("../rom/01-abs_x_wrap.nes")
+	rom := r.Resolve(romfile) //&Rom{}
 
 	ram := &Ram{}
 
@@ -42,15 +40,15 @@ func TestPowerOn(t *testing.T) {
 	ppuRegisters := &PPURegister{}
 	ppuRegisters.Allocate(8)
 
-
 	sram := &SRam{}
 	dma := &DMA{}
-	ioRegisters := &io.IORegisters{}
-	bus.Init(&RamMapper{ram, ppuRegisters,ioRegisters,rom,sram, dma})
+	ioRegisters := NewIORegisters()
+	bus.Init(&RamMapper{ram, ppuRegisters, &ioRegisters, rom, sram, dma})
 	u.Connect(bus)
+
+	u.Reset()
 
 	clock.StartTick()
 
 	t.Logf("TestPowerOn")
 }
-

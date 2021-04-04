@@ -3,13 +3,14 @@ package alu
 import . "nes6502/cpu/register"
 
 type ALU struct {
-	bcdMode bool
+	bcdMode  bool
 	register *Register
 }
 
-func (alu *ALU) Init() {
+func (alu *ALU) Init(register *Register) {
 	//For NES (A203 CPU) does not have a BCD mode
 	alu.bcdMode = false
+	alu.register = register
 }
 
 func (alu *ALU) Add(a byte, b byte) byte {
@@ -23,8 +24,8 @@ func (alu *ALU) Add(a byte, b byte) byte {
 
 	alu.NegativeOut(r)
 	alu.ZeroOut(r)
-	alu.Overflow(int16(a)+int16(b)+int16(carry))
-	alu.CarryOut(uint16(a)+uint16(b)+uint16(carry))
+	alu.Overflow(int16(a) + int16(b) + int16(carry))
+	alu.CarryOut(uint16(a) + uint16(b) + uint16(carry))
 
 	return byte(r)
 }
@@ -55,8 +56,8 @@ func (alu *ALU) Sub(a byte, b byte) byte {
 
 	alu.NegativeOut(r)
 	alu.ZeroOut(r)
-	alu.Overflow(int16(a)-int16(b)-int16(carry))
-	alu.CarryOut(uint16(a)-uint16(b)-uint16(carry))
+	alu.Overflow(int16(a) - int16(b) - int16(carry))
+	alu.CarryOut(uint16(a) - uint16(b) - uint16(carry))
 
 	return byte(r)
 
@@ -87,7 +88,7 @@ func (alu *ALU) ShiftLeft(a byte) byte {
 	r := a << 1
 	alu.NegativeOut(int8(r))
 	alu.ZeroOut(int8(r))
-	alu.CarryOut(uint16(r<<1))
+	alu.CarryOut(uint16(r << 1))
 	return r
 }
 
@@ -95,7 +96,7 @@ func (alu *ALU) ShiftRight(a byte) byte {
 	r := a >> 1
 	alu.NegativeOut(int8(r))
 	alu.ZeroOut(int8(r))
-	alu.CarryOut(uint16(r>>1))
+	alu.CarryOut(uint16(r >> 1))
 	return r
 }
 
