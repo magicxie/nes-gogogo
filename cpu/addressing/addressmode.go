@@ -63,7 +63,7 @@ var (
 	//rel	relative	OPC $BB	branch target is PC + signed offset BB ***
 	Relative = AddressMode{func(opc []byte, bus Bus, register Register) (d byte, addr uint16) {
 		fmt.Printf("$%X", int16(opc[0]))
-		return opc[0], uint16(int16(register.PC) + int16(opc[0]))
+		return opc[0], uint16(int16(register.PC) + int16(int8(opc[0])))
 	}}
 	//abs	absolute	OPC $LLHH	operand is address $HHLL *
 	Absolute = AddressMode{func(opc []byte, bus Bus, register Register) (d byte, addr uint16) {
@@ -74,6 +74,7 @@ var (
 	}}
 	//abs,X	absolute, X-indexed	OPC $LLHH,X	operand is address; effective address is address incremented by X with carry **
 	AbsoluteX = AddressMode{func(opc []byte, bus Bus, register Register) (d byte, addr uint16) {
+
 		addr = (binary.BigEndian.Uint16(opc) + uint16(register.X)) & 0xFFFF
 		data := <-bus.ReadWord(addr)
 		fmt.Printf("$%X,%X => $%X = %X", binary.BigEndian.Uint16(opc), uint16(register.X), addr, data[0])

@@ -18,22 +18,22 @@ func Test_Rom(t *testing.T) {
 		ins := Opcodes[fs[i]]
 
 		bs = ins.Bytes
-		if bs > 1{
-			oprands := fs[i+1 : i+ins.Bytes]
-			var v uint16 = uint16(oprands[0])
-			if len(oprands) > 1 {
-				v = binary.LittleEndian.Uint16(oprands)
+		if bs > 1 {
+			operand := fs[i+1 : i+ins.Bytes]
+			var v uint16 = uint16(operand[0])
+			if len(operand) > 1 {
+				v = binary.LittleEndian.Uint16(operand)
 			}
 			fmt.Printf("%04x %s:%d 0x%04X\n", i, ins.Description, ins.Bytes-1, v)
-			if ins.Name == "JMP"{
+			if ins.Name == "JMP" {
 				fmt.Printf("jmp to %x", int(v-0x800))
-				bs=0
-				i = int(v-0x800)
+				bs = 0
+				i = int(v - 0x800)
 			}
-		}else{
+		} else {
 			fmt.Printf("%04x %s:%d\n", i, ins.Name, ins.Bytes)
-			if bs ==0 {
-				i+=1
+			if bs == 0 {
+				i += 1
 			}
 		}
 

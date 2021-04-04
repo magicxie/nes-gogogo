@@ -17,9 +17,6 @@ type MicroInstruction struct {
 	Execute     func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU)
 }
 
-func jump(pc uint16, offset byte) uint16 {
-	return uint16(int16(pc) + int16(offset))
-}
 func pushPC(register *Register, bus *Bus) {
 	fmt.Printf("PUSH PC %04X\n", register.PC)
 	push(register, bus, byte(register.PC>>8))
@@ -37,10 +34,11 @@ func pullPC(register *Register, bus *Bus) uint16 {
 
 func push(register *Register, bus *Bus, data byte) {
 	bus.WriteByte(uint16(register.SP)+0x0100, []byte{data})
-	register.SP++
+	fmt.Printf("stack top %v:%X\n", register.SP, <-bus.ReadByte(uint16(register.SP)+0x0100))
+	register.SP--
 }
 func pull(register *Register, bus *Bus) byte {
-	register.SP--
+	register.SP++
 	top := (<-bus.ReadByte(uint16(register.SP) + 0x0100))[0]
 	return top
 }
@@ -72,7 +70,7 @@ var (
 		"Branch on Carry Clear",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if !register.GetStatus(SR_FLAG_Carry) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -81,7 +79,7 @@ var (
 		"Branch on Carry Set",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if register.GetStatus(SR_FLAG_Carry) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -90,7 +88,7 @@ var (
 		"Branch on Result Zero",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if register.GetStatus(SR_FLAG_Zero) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -108,7 +106,7 @@ var (
 		"Branch on Result Minus",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if register.GetStatus(SR_FLAG_Negative) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -117,7 +115,7 @@ var (
 		"Branch on Result not Zero",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if !register.GetStatus(SR_FLAG_Zero) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -126,7 +124,7 @@ var (
 		"Branch on Result Plus",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if register.GetStatus(SR_FLAG_Negative) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -154,7 +152,7 @@ var (
 		"Branch on Overflow Clear",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if !register.GetStatus(SR_FLAG_Overflow) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -163,7 +161,7 @@ var (
 		"Branch on Overflow Set",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			if register.GetStatus(SR_FLAG_Overflow) {
-				register.PC = jump(register.PC, resolved[0])
+				register.PC = address
 			}
 		},
 	}
@@ -227,14 +225,14 @@ var (
 		"DEX",
 		"Decrement Index X by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.X--
+			register.X = alu.Sub(register.X, 1)
 		},
 	}
 	DEY = MicroInstruction{
 		"DEY",
 		"Decrement Index Y by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.Y--
+			register.Y = alu.Sub(register.Y, 1)
 		},
 	}
 	EOR = MicroInstruction{
@@ -251,14 +249,14 @@ var (
 		"INX",
 		"Increment Index X by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.X++
+			register.X = alu.Add(register.X, 1)
 		},
 	}
 	INY = MicroInstruction{
 		"INY",
 		"Increment Index Y by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.Y++
+			register.Y = alu.Add(register.Y, 1)
 		},
 	}
 	JMP = MicroInstruction{

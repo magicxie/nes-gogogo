@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-
-
 type HEX struct {
 	str string
 }
@@ -60,8 +58,8 @@ func TestResolver_Resolve(t *testing.T) {
 			bs := fmt.Sprintf("%08b", b)
 
 			//image := &Image{}
-			file, _ := os.Create("img/"+strconv.Itoa(i)+".jpeg")
-			rgba := image.NewRGBA(image.Rect(0,0,64,64))
+			file, _ := os.Create("img/" + strconv.Itoa(i) + ".jpeg")
+			rgba := image.NewRGBA(image.Rect(0, 0, 64, 64))
 			defer file.Close()
 			println(rgba)
 
@@ -76,17 +74,17 @@ func TestResolver_Resolve(t *testing.T) {
 		}
 	}
 
-	type NameTable struct{
-		nameTable []byte
+	type NameTable struct {
+		nameTable      []byte
 		attributeTable []byte
 	}
 	nameTable := []NameTable{}
 	//FC有4个名称表，位于0x2000-0x2FFF，一共4KB，每个名称表1024字节。其中前960字节存储实际名称表，后64字节存储属性表。
-	for ii := 0; ii <= 3; ii ++ {
-		start := 0x2000+ii*0x1000
+	for ii := 0; ii <= 3; ii++ {
+		start := 0x2000 + ii*0x1000
 
-		physicalNameTable := rom.Character.data[start:start+960]
-		attributeTable := rom.Character.data[start+961:start+0x1000]
+		physicalNameTable := rom.Character.data[start : start+960]
+		attributeTable := rom.Character.data[start+961 : start+0x1000]
 
 		nameTable = append(nameTable, NameTable{physicalNameTable, attributeTable})
 
@@ -99,7 +97,5 @@ func TestResolver_Resolve(t *testing.T) {
 			fmt.Printf("%X", c)
 		}
 	}
-
-
 
 }

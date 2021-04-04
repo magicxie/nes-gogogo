@@ -28,8 +28,13 @@ func TestPowerOn(t *testing.T) {
 	//println(err.Error())
 
 	r := &Resolver{}
-	romfile, _ := ioutil.ReadFile("../rom/01-abs_x_wrap.nes")
-	rom := r.Resolve(romfile) //&Rom{}
+	/**
+	01-abs_x_wrap
+	-------------
+	Verifies that $FFFF wraps around to 0 for STA abs,X and LDA abs,X.
+	*/
+	romFile, _ := ioutil.ReadFile("../test/cpu/01-abs_x_wrap.nes")
+	rom := r.Resolve(romFile)
 
 	ram := &Ram{}
 
@@ -43,7 +48,7 @@ func TestPowerOn(t *testing.T) {
 	sram := &SRam{}
 	dma := &DMA{}
 	ioRegisters := NewIORegisters()
-	bus.Init(&RamMapper{ram, ppuRegisters, &ioRegisters, rom, sram, dma})
+	bus.Init(&RamMapper{Ram: ram, PpuRegister: ppuRegisters, IoRegister: &ioRegisters, Rom: rom, SRam: sram, Dma: dma})
 	u.Connect(bus)
 
 	u.Reset()
