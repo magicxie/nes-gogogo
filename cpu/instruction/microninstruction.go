@@ -1,10 +1,10 @@
 package instruction
 
 import (
-	"fmt"
 	. "nes6502/bus"
 	. "nes6502/cpu/alu"
 	. "nes6502/cpu/register"
+	. "nes6502/misc"
 )
 
 type Executable interface {
@@ -18,7 +18,6 @@ type MicroInstruction struct {
 }
 
 func pushPC(register *Register, bus *Bus) {
-	fmt.Printf("PUSH PC %04X\n", register.PC)
 	push(register, bus, byte(register.PC>>8))
 	push(register, bus, byte(register.PC))
 }
@@ -28,18 +27,18 @@ func pullPC(register *Register, bus *Bus) uint16 {
 	bs1 := pull(register, bus)
 	bs0 := pull(register, bus)
 	register.PC = uint16(bs0)<<8 + uint16(bs1)
-	fmt.Printf("PC %04X\n", register.PC)
 	return register.PC
 }
 
 func push(register *Register, bus *Bus, data byte) {
 	bus.WriteByte(uint16(register.SP)+0x0100, []byte{data})
-	fmt.Printf("stack top %v:%X\n", register.SP, <-bus.ReadByte(uint16(register.SP)+0x0100))
+	Console.Trace("Stack Push %04X=%02X\n", uint16(register.SP)+0x0100, data)
 	register.SP--
 }
 func pull(register *Register, bus *Bus) byte {
 	register.SP++
 	top := (<-bus.ReadByte(uint16(register.SP) + 0x0100))[0]
+	Console.Trace("Stack Pull %04X=%02X\n", uint16(register.SP)+0x0100, top)
 	return top
 }
 
@@ -218,7 +217,8 @@ var (
 		"DEC",
 		"Decrement Memory by One",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			bus.WriteByte(address, []byte{(<-bus.ReadByte(address))[0] - 1})
+			r := alu.Sub((<-bus.ReadByte(address))[0], 1)
+			bus.WriteByte(address, []byte{r})
 		},
 	}
 	DEX = MicroInstruction{
@@ -243,7 +243,11 @@ var (
 	INC = MicroInstruction{
 		"INC",
 		"Increment Memory by One",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			r := alu.Add(resolved[0], 1)
+			bus.WriteByte(address, []byte{r})
+
+		},
 	}
 	INX = MicroInstruction{
 		"INX",
@@ -279,6 +283,8 @@ var (
 		"Load Accumulator with Memory",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.AC = resolved[0]
+			alu.NegativeOut(int8(register.AC))
+			alu.ZeroOut(int8(register.AC))
 		},
 	}
 	LDX = MicroInstruction{
@@ -286,6 +292,8 @@ var (
 		"Load Index X with Memory",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.X = resolved[0]
+			alu.NegativeOut(int8(register.X))
+			alu.ZeroOut(int8(register.X))
 		},
 	}
 	LDY = MicroInstruction{
@@ -293,13 +301,21 @@ var (
 		"Load Index Y with Memory",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.Y = resolved[0]
+			alu.NegativeOut(int8(register.Y))
+			alu.ZeroOut(int8(register.Y))
 		},
 	}
 	LSR = MicroInstruction{
 		"LSR",
 		"Shift One Bit Right (Memory or Accumulator)",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
-			register.AC = alu.ShiftRight(resolved[0])
+			r := alu.ShiftRight(resolved[0])
+
+			if address != 0 {
+				bus.WriteByte(address, []byte{r})
+			} else {
+				register.AC = r
+			}
 		},
 	}
 	NOP = MicroInstruction{
@@ -311,7 +327,9 @@ var (
 	ORA = MicroInstruction{
 		"ORA",
 		"OR Memory with Accumulator",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.AC = alu.Or(register.AC, resolved[0])
+		},
 	}
 	PHA = MicroInstruction{
 		"PHA",
@@ -332,6 +350,8 @@ var (
 		"Pull Accumulator from Stack",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.AC = pull(register, bus)
+			alu.NegativeOut(int8(register.AC))
+			alu.ZeroOut(int8(register.AC))
 		},
 	}
 	PLP = MicroInstruction{
@@ -344,12 +364,26 @@ var (
 	ROL = MicroInstruction{
 		"ROL",
 		"Rotate One Bit Left (Memory or Accumulator)",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			r := alu.RotateLeft(resolved[0])
+			if address != 0 {
+				bus.WriteByte(address, []byte{r})
+			} else {
+				register.AC = r
+			}
+		},
 	}
 	ROR = MicroInstruction{
 		"ROR",
 		"Rotate One Bit Right (Memory or Accumulator)",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			r := alu.RotateRight(resolved[0])
+			if address != 0 {
+				bus.WriteByte(address, []byte{r})
+			} else {
+				register.AC = r
+			}
+		},
 	}
 	RTI = MicroInstruction{
 		"RTI",
@@ -371,7 +405,9 @@ var (
 	SBC = MicroInstruction{
 		"SBC",
 		"Subtract Memory from Accumulator with Borrow",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			register.AC = alu.Sub(register.AC, resolved[0])
+		},
 	}
 	SEC = MicroInstruction{
 		"SEC",
@@ -404,7 +440,9 @@ var (
 	STX = MicroInstruction{
 		"STX",
 		"Store Index X in Memory",
-		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {},
+		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
+			bus.WriteByte(address, []byte{register.X})
+		},
 	}
 	STY = MicroInstruction{
 		"STY",
@@ -418,6 +456,8 @@ var (
 		"Transfer Accumulator to Index X",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.X = register.AC
+			alu.NegativeOut(int8(register.X))
+			alu.ZeroOut(int8(register.X))
 		},
 	}
 	TAY = MicroInstruction{
@@ -425,6 +465,8 @@ var (
 		"Transfer Accumulator to Index Y",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.Y = register.AC
+			alu.NegativeOut(int8(register.Y))
+			alu.ZeroOut(int8(register.Y))
 		},
 	}
 	TSX = MicroInstruction{
@@ -432,6 +474,8 @@ var (
 		"Transfer Stack Pointer to Index X",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.X = register.SP
+			alu.NegativeOut(int8(register.X))
+			alu.ZeroOut(int8(register.X))
 		},
 	}
 	TXA = MicroInstruction{
@@ -439,6 +483,8 @@ var (
 		"Transfer Index X to Accumulator",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.AC = register.X
+			alu.NegativeOut(int8(register.AC))
+			alu.ZeroOut(int8(register.AC))
 		},
 	}
 	TXS = MicroInstruction{
@@ -453,6 +499,8 @@ var (
 		"Transfer Index Y to Accumulator",
 		func(operand []byte, address uint16, resolved []byte, bus *Bus, register *Register, alu *ALU) {
 			register.AC = register.Y
+			alu.NegativeOut(int8(register.AC))
+			alu.ZeroOut(int8(register.AC))
 		},
 	}
 )

@@ -2,6 +2,7 @@ package bus
 
 import (
 	. "nes6502/io"
+	"nes6502/misc"
 	. "nes6502/ppu"
 	. "nes6502/ram"
 	. "nes6502/rom"
@@ -37,17 +38,22 @@ func addressInRange(address uint16, lo uint16, hi uint16) bool {
     | $C000   | $4000 |       | PRG-ROM               |
     +---------+-------+-------+-----------------------+
 */
-func (ramMapper *RamMapper) Read(address uint16, bytes int) []byte {
+func (ramMapper *RamMapper) ReadByte(address uint16) byte {
 	if address < 0x2000 {
-		return ramMapper.Ram.ReadBytes(address%0x0800, bytes)
+		return ramMapper.Ram.ReadByte(address % 0x0800)
 	}
 	//$2000-$2007	$0008	NES PPU registers
 	if addressInRange(address, 0x2000, 0x4000) {
-		return ramMapper.PpuRegister.ReadBytes(address%8, bytes)
+		misc.Console.Trace("\nPPU reg Access %04X", address%8)
+		if address%8+uint16(1) > uint16(ramMapper.PpuRegister.Memory.Size()) {
+			misc.Console.Error("\nppu reg overflow. size:%X,addr:%X\n", ramMapper.PpuRegister.Memory.Size(), address)
+		}
+
+		return ramMapper.PpuRegister.ReadByte(address % 8)
 	}
 	//IO register
 	if addressInRange(address, 0x4000, 0x4020) {
-		return ramMapper.IoRegister.ReadBytes(address-0x4000, bytes)
+		return ramMapper.IoRegister.ReadByte(address - 0x4000)
 	}
 	//Expansion ROM
 	if addressInRange(address, 0x4020, 0x6000) {
@@ -57,21 +63,21 @@ func (ramMapper *RamMapper) Read(address uint16, bytes int) []byte {
 
 	}
 	if addressInRange(address, 0x8000, 0xFFFF) {
-		return ramMapper.Rom.Program.ReadBytes(address%(0x4000*uint16(ramMapper.Rom.Header.PGMMirrors)), bytes)
+		return ramMapper.Rom.Program.ReadByte(address % (0x4000 * uint16(ramMapper.Rom.Header.PGMMirrors)))
 
 	}
-	return []byte{}
+	return 0
 }
 
-func (ramMapper *RamMapper) Write(address uint16, data []byte) {
+func (ramMapper *RamMapper) WriteByte(address uint16, data byte) {
 	if address < 0x2000 {
-		ramMapper.Ram.WriteBytes(address%0x0800, data)
-		ramMapper.Ram.WriteBytes(address%0x0800+0x0800, data)
-		ramMapper.Ram.WriteBytes(address%0x0800+0x1000, data)
-		ramMapper.Ram.WriteBytes(address%0x0800+0x1800, data)
+		ramMapper.Ram.WriteByte(address%0x0800, data)
+		ramMapper.Ram.WriteByte(address%0x0800+0x0800, data)
+		ramMapper.Ram.WriteByte(address%0x0800+0x1000, data)
+		ramMapper.Ram.WriteByte(address%0x0800+0x1800, data)
 	}
 	if addressInRange(address, 0x2000, 0x4000) {
-		ramMapper.PpuRegister.WriteBytes(address%8, data[0])
+		ramMapper.PpuRegister.WriteByte(address%8, data)
 
 		/**
 		$2000-$2007	$0008	NES PPU registers
@@ -84,11 +90,11 @@ func (ramMapper *RamMapper) Write(address uint16, data []byte) {
 	//IO register
 	if addressInRange(address, 0x4000, 0x4020) {
 
-		ramMapper.IoRegister.WriteBytes(address-0x4000, data[0])
+		ramMapper.IoRegister.WriteByte(address-0x4000, data)
 
 		//TODO move to cycles
 		if address == DMA_ADDRESS {
-			ramMapper.Dma.Copy(data[0])
+			ramMapper.Dma.Copy(data)
 		}
 	}
 

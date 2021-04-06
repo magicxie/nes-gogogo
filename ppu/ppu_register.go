@@ -1,6 +1,9 @@
 package ppu
 
-import . "nes6502/io"
+import (
+	. "nes6502/io"
+	"nes6502/misc"
+)
 
 type PPURegister struct {
 	Memory
@@ -118,47 +121,57 @@ func (register *PPURegister) EnableRGB(NTSC bool) (r bool, g bool, b bool) {
 */
 
 func (register *PPURegister) SpriteOverflow() bool {
+	misc.Console.Debug("\nRead SpriteOverflow\n")
 	return register.ReadBytes(2, 1)[0]<<5>>7 == 0
 }
 
 func (register *PPURegister) SpriteHit() bool {
+	misc.Console.Debug("\nRead SpriteHit\n")
 	spriteHit := register.ReadBytes(2, 1)[0]<<6>>7 == 0
 	register.ResetVBlank()
 	return spriteHit
 }
 
 func (register *PPURegister) ResetVBlank() {
-	register.WriteBytes(2, register.ReadBytes(2, 1)[0]&191)
+	misc.Console.Debug("\nReset VBlank\n")
+	register.WriteByte(2, register.ReadByte(2)&191)
 }
 
 func (register *PPURegister) VBlank() bool {
+	misc.Console.Debug("\nRead VBlank\n")
 	vblankSet := register.ReadBytes(2, 1)[0]<<6>>7 == 0
 	register.ResetVBlank()
 	return vblankSet
 }
 
 func (register *PPURegister) SpriteOAMAddress() byte {
+	misc.Console.Debug("\nRead SpriteOAMAddress\n")
 	return register.ReadBytes(3, 1)[0]
 }
 
 func (register *PPURegister) SpriteOAMData() byte {
+	misc.Console.Debug("\nWrite SpriteOAMData\n")
 	data := register.ReadBytes(4, 1)[0]
-	register.WriteBytes(3, register.SpriteOAMAddress()+1)
+	register.WriteByte(3, register.SpriteOAMAddress()+1)
 	return data
 }
 
 func (register *PPURegister) ScrollX() byte {
+	misc.Console.Debug("\nScrollX\n")
 	return register.ReadBytes(5, 1)[0] >> 4
 }
 func (register *PPURegister) ScrollY() byte {
+	misc.Console.Debug("\nScrollY\n")
 	return register.ReadBytes(5, 1)[0] & 0x0F
 }
 func (register *PPURegister) OAMAddress() byte {
+	misc.Console.Debug("\nRead OAMAddress\n")
 	addr := register.ReadBytes(5, 2)
 	return ((addr[0] & 0x3F) << 8) + addr[1]
 }
 
 func (register *PPURegister) OAMData() byte {
+	misc.Console.Debug("\nRead OAMData\n")
 	data := register.ReadBytes(7, 1)[0] & 0x0F
 	//PPU 将会在访问 $2007 后自动增加OAM地址，加1或者32 (基于 $2000 的 D2).
 	var offset byte = 1
@@ -166,7 +179,7 @@ func (register *PPURegister) OAMData() byte {
 		offset = 32
 	}
 	newOAMAddress := register.OAMAddress() + offset
-	register.WriteBytes(5, (newOAMAddress&0x3F)>>8)
-	register.WriteBytes(6, newOAMAddress&0x00FF)
+	register.WriteByte(5, (newOAMAddress&0x3F)>>8)
+	register.WriteByte(6, newOAMAddress&0x00FF)
 	return data
 }

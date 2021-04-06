@@ -27,12 +27,8 @@ func (ram *Ram) WriteByte(address uint16, data byte) {
 }
 
 func (ram *Ram) WriteBytes(address uint16, data []byte) {
-	if len(data) == 1 {
-		ram.data[address] = data[0]
-	}
-	if len(data) == 2 {
-		ram.data[address] = data[1]
-		ram.data[address+1] = data[0]
+	for idx, d := range data {
+		ram.data[address+uint16(idx)] = d
 	}
 }
 
@@ -41,16 +37,13 @@ func (ram *Ram) ReadBytes(address uint16, bytes int) []byte {
 		return []byte{ram.data[address]}
 	} else {
 		//$LLHH
-		return []byte{ram.data[address+1], ram.data[address]}
+		return []byte{ram.data[address], ram.data[address+1]}
 	}
 }
 
 func (ram *Ram) WriteUint16(address uint16, data uint16) {
-	var b [2]byte
-	binary.LittleEndian.PutUint16(b[0:], data)
-	for k, v := range b {
-		ram.data[address+uint16(k)] = v
-	}
+	ram.data[address] = byte(data >> 8)
+	ram.data[address+1] = byte(data)
 }
 
 func (ram *Ram) ReadByte(address uint16) byte {
@@ -59,5 +52,5 @@ func (ram *Ram) ReadByte(address uint16) byte {
 
 //USELESS?
 func (ram *Ram) ReadUint16(address uint16) uint16 {
-	return binary.LittleEndian.Uint16(ram.data[address : address+2])
+	return binary.BigEndian.Uint16(ram.data[address : address+2])
 }

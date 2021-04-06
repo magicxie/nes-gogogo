@@ -1,11 +1,11 @@
 package cpu
 
 import (
-	"fmt"
 	. "nes6502/bus"
 	. "nes6502/cpu/alu"
 	. "nes6502/cpu/instruction"
 	. "nes6502/cpu/register"
+	. "nes6502/misc"
 )
 
 type InstructionCycle struct {
@@ -35,6 +35,8 @@ type CPU struct {
 	opcodes          map[byte]Instruction
 	instructionCycle InstructionCycle
 	alu              *ALU
+
+	totalCycles uint16
 }
 
 func (cpu *CPU) changePhase(phase int) {
@@ -73,8 +75,19 @@ func (cpu *CPU) execute(instruction Instruction, cycle chan int) {
 	//fmt.Printf("operand length :%d\t", operandLen)
 	operand := <-cpu.bus.Read(cpu.register.PC-uint16(instruction.Bytes)+1, operandLen)
 
+	for _i := 0; _i < 2; _i++ {
+		if operandLen > _i {
+			Console.Debug("%02X ", operand[_i])
+		} else {
+			Console.Debug("   ")
+		}
+	}
+
+	Console.Debug("\t%s\t", instruction.Name)
+
 	data, address := instruction.Resolve(operand, *cpu.bus, *cpu.register)
-	fmt.Printf("%v\t0x%04X,%04X \n", operand, address, data)
+	Console.Trace("0x%04X,%02X ", address, data)
+	Console.Debug("\n")
 
 	instruction.Execute(operand, address, []byte{data}, cpu.bus, cpu.register, cpu.alu)
 
@@ -90,25 +103,23 @@ func (cpu *CPU) execute(instruction Instruction, cycle chan int) {
 
 func (cpu *CPU) fetch(cycle chan int) byte {
 	//fetch next instruction from ram
-	//instruction := <-cpu.instructionCycle.instruction
 	cpu.cycle = <-cycle
-
-	//fmt.Printf("Fetch PC: %X\t", cpu.register.PC)
+	cpu.totalCycles++
 	data := <-cpu.bus.ReadByte(cpu.register.PC)
-
-	//fmt.Printf("OPCODE is : %X\t", data)
+	//Console.Trace("%06d:", cpu.totalCycles)
+	Console.Debug("%04X\t%02X ", cpu.register.PC, data[0])
 	return data[0]
 }
 
 func (cpu *CPU) translate(opCode byte) Instruction {
 	instruction := cpu.opcodes[opCode]
-	fmt.Printf("%04X\t%s\t", cpu.register.PC, instruction.Name)
 	cpu.register.PC += uint16(instruction.Bytes)
 	return instruction
 }
 
 func (cpu *CPU) Init() {
 
+	cpu.totalCycles = 0
 	//load instruction set
 	cpu.opcodes = Opcodes
 	// reset registers
@@ -148,6 +159,6 @@ func (cpu *CPU) Connect(bus *Bus) {
 
 func (cpu *CPU) Reset() {
 	resetVector := <-cpu.bus.ReadWord(0xFFFC)
-	fmt.Printf("Reset Vector: %X\n", uint16(resetVector[0])<<8+uint16(resetVector[1]))
+	Console.Debug("Reset Vector: %X\n", uint16(resetVector[0])<<8+uint16(resetVector[1]))
 	cpu.register.PC = uint16(resetVector[0])<<8 + uint16(resetVector[1])
 }

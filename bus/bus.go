@@ -1,5 +1,7 @@
 package bus
 
+import "encoding/binary"
+
 const (
 	WRITE = 1
 	READ  = 0
@@ -13,7 +15,7 @@ type Payload struct {
 
 type Bus struct {
 	payload chan Payload
-	dataBus chan []byte
+	dataBus chan []byte //Little Endian Data Bus
 	mapper  Mapper
 	//Ram         *Ram
 	//IORegisters *IORegisters
@@ -29,12 +31,33 @@ func (bus *Bus) address(bytes int) {
 	payload := <-bus.payload
 
 	if payload.signal == READ {
-		bus.dataBus <- bus.mapper.Read(payload.address, bytes) //bus.Ram.ReadBytes(payload.address, bytes)
+		bs := make([]byte, bytes)
+		for i := 0; i < bytes; i++ {
+			bs[i] = bus.mapper.ReadByte(payload.address + uint16(i))
+		}
+		if bytes < 2 {
+			bus.dataBus <- bs
+		} else {
+			data := make([]byte, bytes)
+			binary.BigEndian.PutUint16(data, binary.LittleEndian.Uint16(bs))
+			bus.dataBus <- data
+		}
+
 	}
 
 	if payload.signal == WRITE {
 		bs := <-bus.dataBus
-		bus.mapper.Write(payload.address, bs)
+
+		data := make([]byte, bytes)
+		if bytes < 2 {
+			data = bs
+		} else {
+			binary.BigEndian.PutUint16(data, binary.LittleEndian.Uint16(bs))
+		}
+		for i := 0; i < bytes; i++ {
+			bus.mapper.WriteByte(payload.address+uint16(i), data[i])
+		}
+
 	}
 }
 
@@ -80,6 +103,8 @@ func (bus *Bus) Send(signal byte, address uint16, bytes int) {
 }
 
 type Mapper interface {
-	Read(address uint16, bytes int) []byte
-	Write(address uint16, data []byte)
+	ReadByte(address uint16) byte
+	WriteByte(address uint16, data byte)
+	//Read(address uint16, bytes int) []byte
+	//Write(address uint16, data []byte)
 }

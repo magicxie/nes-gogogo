@@ -33,7 +33,7 @@ func TestPowerOn(t *testing.T) {
 	-------------
 	Verifies that $FFFF wraps around to 0 for STA abs,X and LDA abs,X.
 	*/
-	romFile, _ := ioutil.ReadFile("../test/cpu/01-abs_x_wrap.nes")
+	romFile, _ := ioutil.ReadFile("../test/cpu/02-branch_wrap.nes")
 	rom := r.Resolve(romFile)
 
 	ram := &Ram{}

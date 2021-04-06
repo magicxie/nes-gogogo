@@ -94,9 +94,34 @@ func (alu *ALU) ShiftLeft(a byte) byte {
 
 func (alu *ALU) ShiftRight(a byte) byte {
 	r := a >> 1
-	alu.NegativeOut(int8(r))
+	alu.register.SetStatus(SR_FLAG_Negative, false)
 	alu.ZeroOut(int8(r))
 	alu.CarryOut(uint16(r >> 1))
+	return r
+}
+
+//The Carry is shifted into bit 0 and the original bit 7 is shifted into the Carry.
+func (alu *ALU) RotateLeft(a byte) byte {
+	r := a << 1
+	if alu.register.GetStatus(SR_FLAG_Carry) {
+		r = r + 1
+	}
+	alu.NegativeOut(int8(r))
+	alu.ZeroOut(int8(r))
+	alu.CarryOut(uint16(r << 1))
+	return r
+}
+
+//The Carry is shifted into bit 7 and the original bit 0 is shifted into the Carry
+func (alu *ALU) RotateRight(a byte) byte {
+	r := a >> 1
+	if alu.register.GetStatus(SR_FLAG_Carry) {
+		r = r + 0x80
+	}
+	alu.CarryOut(uint16(r))
+	alu.NegativeOut(int8(r))
+	alu.ZeroOut(int8(r))
+
 	return r
 }
 

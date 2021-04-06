@@ -42,18 +42,18 @@ func (vramMapper *VRamMapper) Read(address uint16, bytes int) []byte {
 
 func (vramMapper *VRamMapper) Write(address uint16, data []byte) {
 	if address < 0x2000 {
-		vramMapper.PatternTables.WriteBytes(address, data[0])
+		vramMapper.PatternTables.WriteBytes(address, data)
 	}
 	if address >= 0x2000 && address < 0x3F00 {
-		vramMapper.NameTables.WriteBytes(address - 0x2000, data[0])
+		vramMapper.NameTables.WriteBytes(address-0x2000, data)
 	}
 
 	if address >= 0x3F00 && address < 0x3F10 {
-		vramMapper.ImagePalette.WriteBytes(address - 0x3F00, data[0])
+		vramMapper.ImagePalette.WriteBytes(address-0x3F00, data)
 	}
 
 	if address >= 0x3F10 && address < 0x3F20 {
-		vramMapper.SpritePalette.WriteBytes(address - 0x3F10, data[0])
+		vramMapper.SpritePalette.WriteBytes(address-0x3F10, data)
 	}
 
 	if address >= 0x3F20 && address <= 0xFFFF {

@@ -24,8 +24,12 @@ func (prg *Program) ReadBytes(address uint16, bytes int) []byte {
 		return []byte{prg.data[address]}
 	} else {
 		//$LLHH
-		return []byte{prg.data[address+1], prg.data[address]}
+		return []byte{prg.data[address], prg.data[address+1]}
 	}
+}
+
+func (prg *Program) ReadByte(address uint16) byte {
+	return prg.data[address]
 }
 
 type Character struct {

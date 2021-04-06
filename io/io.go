@@ -6,10 +6,20 @@ type IORegisters struct {
 }
 
 func (ioRegisters *IORegisters) ReadBytes(address uint16, bytes int) []byte {
-	return ioRegisters.data[address : address+1]
+	return ioRegisters.data[address : address+uint16(bytes)]
 }
 
-func (ioRegisters *IORegisters) WriteBytes(address uint16, data byte) {
+func (ioRegisters *IORegisters) WriteBytes(address uint16, data []byte) {
+	for i, d := range data {
+		ioRegisters.WriteByte(address+uint16(i), d)
+	}
+}
+
+func (ioRegisters *IORegisters) ReadByte(address uint16) byte {
+	return ioRegisters.data[address]
+}
+
+func (ioRegisters *IORegisters) WriteByte(address uint16, data byte) {
 	ioRegisters.data[address] = data
 }
 

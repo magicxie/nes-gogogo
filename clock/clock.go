@@ -29,16 +29,14 @@ func (clock *Clock) FrequencyDivision(channel chan int, cycles int) {
 	clock.Divisions = append(clock.Divisions, &Division{channel, cycles})
 }
 func (clock *Clock) output() {
-	for _,d := range clock.Divisions{
+	for _, d := range clock.Divisions {
 		d.channel <- d.cycles
 	}
 }
 func (clock *Clock) StartTick() {
 
-	//ticker := time.NewTicker(clock.duration)
 	var i int64
 	for i = 0; i < 5360520; i++ {
-		//<-ticker.C
 		time.Sleep(clock.duration)
 		go clock.output()
 		if i == 5360520-1 {
